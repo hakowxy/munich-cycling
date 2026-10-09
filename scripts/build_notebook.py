@@ -229,7 +229,7 @@ Raw comparisons ("rainy days are quieter") mix up several effects. Rain is more 
 
 On the log scale, each coefficient reads as a percentage change with everything else held constant.
 
-**Calendar inputs:** Bavarian public holidays come from the `holidays` package, plus 15 August (Mariä Himmelfahrt), which is a holiday in Munich but not in every Bavarian municipality. School holiday dates are the 2025 Bavarian ones published by the state ministry of education.
+**Calendar inputs:** Bavarian public holidays come from the `holidays` package, plus 15 August (Mariä Himmelfahrt), which is a holiday in Munich but not in every Bavarian municipality. School holiday dates are the official 2025 Bavarian ones, checked against the state calendar.
 """)
 
 code("""

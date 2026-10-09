@@ -74,7 +74,7 @@ python scripts/build_dashboard_data.py
 
 ## Source
 
-Landeshauptstadt München, *Raddauerzählstellen* ([opendata.muenchen.de](https://opendata.muenchen.de)). Public holidays come from the `holidays` package plus 15 August, and the school holidays are the 2025 Bavarian dates.
+Landeshauptstadt München, *Raddauerzählstellen* ([opendata.muenchen.de](https://opendata.muenchen.de)). Public holidays come from the `holidays` package plus 15 August, and the school holidays are the official 2025 Bavarian dates.
 
 ---
 
