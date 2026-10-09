@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Munich Cycling 2025</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="How weather, holidays and events drive cycling in Munich: an interactive look at the city's 2025 bike counter data. Built by Xinyang Ma.">
+<script src="vendor/plotly-4.1.1.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f7f5; --card: #ffffff; --text: #111827; --muted: #6b7280; --border: #e5e7eb;
+    --accent: #0f766e; --accent-soft: #e6f4f1; --grid: #eef0f2; --red: #dc2626;
+    --c0: #ebedf0; --c1: #b7e4d8; --c2: #6cc5b0; --c3: #239b84; --c4: #0f5f53;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1214; --card: #171b1e; --text: #e5e7eb; --muted: #9ca3af; --border: #262c30;
+      --accent: #2dd4bf; --accent-soft: #123532; --grid: #222a2e; --red: #f87171;
+      --c0: #1f2629; --c1: #134e48; --c2: #17796c; --c3: #22a892; --c4: #5eead4;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1214; --card: #171b1e; --text: #e5e7eb; --muted: #9ca3af; --border: #262c30;
+    --accent: #2dd4bf; --accent-soft: #123532; --grid: #222a2e; --red: #f87171;
+    --c0: #1f2629; --c1: #134e48; --c2: #17796c; --c3: #22a892; --c4: #5eead4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 40px; }
+  header h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); max-width: 780px; }
+  a { color: var(--accent); text-decoration: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 16px; }
+  .chip { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border);
+          border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+  .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .chip small { color: var(--muted); font-weight: 400; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .kpi .label { color: var(--muted); font-size: 12px; }
+  .kpi .value { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; margin-top: 2px; }
+  .kpi .note { font-size: 12px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; margin-top: 12px; }
+  .card h2 { font-size: 14px; margin: 0 0 2px; }
+  .card .sub { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+  #calendar { width: 100%; min-width: 760px; height: 210px; }
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #hourly { width: 100%; height: 300px; }
+  .legend-scale { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); justify-content: flex-end; }
+  .legend-scale span.sw { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+  .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 6px; }
+  .toggle button { font: inherit; font-size: 12px; border: 0; background: var(--card); color: var(--text); padding: 4px 12px; cursor: pointer; }
+  .toggle button + button { border-left: 1px solid var(--border); }
+  .toggle button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 6px; }
+  .form label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 2px; }
+  .form .full { grid-column: 1 / -1; }
+  select { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; width: 100%; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .checks { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+  .checks input { accent-color: var(--accent); }
+  .result { margin-top: 14px; padding: 14px; border-radius: 10px; background: var(--accent-soft); }
+  .result .big { font-size: 34px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
+  .result .cmp { font-size: 13px; color: var(--text); }
+  .fine { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 18px; }
+  footer a { color: var(--muted); text-decoration: underline; }
+  @media (max-width: 860px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .kpi .value { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>What makes Munich cycle?</h1>
+    <p>Every cyclist passing five of Munich's automatic bike counters in 2025, with the day's weather.
+      Pick a station, explore the year, then try the weather predictor.
+      Full analysis in the <a href="https://github.com/hakowxy/munich-cycling">GitHub repo</a>.</p>
+  </header>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="kpis">
+    <div class="card kpi"><div class="label">Cyclists counted in 2025</div><div class="value" id="k-total"></div><div class="note" id="n-total"></div></div>
+    <div class="card kpi"><div class="label">Busiest day</div><div class="value" id="k-best"></div><div class="note" id="n-best"></div></div>
+    <div class="card kpi"><div class="label">Typical weekday</div><div class="value" id="k-weekday"></div><div class="note" id="n-weekday"></div></div>
+    <div class="card kpi"><div class="label">Rainy weekday vs dry weekday</div><div class="value" id="k-rain"></div><div class="note">Days with 5 mm or more vs no rain</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Every day of 2025</h2>
+    <p class="sub">Darker = more cyclists. Hover for the date, count and weather.</p>
+    <div class="scroll-x"><div id="calendar"></div></div>
+    <div class="legend-scale">Fewer <span class="sw" style="background:var(--c0)"></span><span class="sw" style="background:var(--c1)"></span><span class="sw" style="background:var(--c2)"></span><span class="sw" style="background:var(--c3)"></span><span class="sw" style="background:var(--c4)"></span> More</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>A day on this route</h2>
+      <p class="sub">Average cyclists per hour, from the 15-minute counts</p>
+      <div class="toggle" id="month-toggle"><button data-m="June">June</button><button data-m="December">December</button></div>
+      <div id="hourly"></div>
+    </div>
+
+    <div class="card">
+      <h2>Weather predictor</h2>
+      <p class="sub">How many cyclists would this route see? Uses the regression model from the analysis.</p>
+      <div class="form">
+        <div><label for="p-station">Station</label><select id="p-station"></select></div>
+        <div><label for="p-day">Day of week</label><select id="p-day"></select></div>
+        <div class="full checks">
+          <label><input type="checkbox" id="p-holiday"> Public holiday</label>
+          <label><input type="checkbox" id="p-school"> School holidays</label>
+        </div>
+        <div class="full"><label for="p-temp">Max temperature: <b id="v-temp"></b></label><input type="range" id="p-temp" min="-10" max="35" step="1" value="20"></div>
+        <div class="full"><label for="p-rain">Rain: <b id="v-rain"></b></label><input type="range" id="p-rain" min="0" max="30" step="0.5" value="0"></div>
+        <div class="full"><label for="p-sun">Sunshine: <b id="v-sun"></b></label><input type="range" id="p-sun" min="0" max="15" step="0.5" value="8"></div>
+      </div>
+      <div class="result">
+        <div class="big" id="p-out"></div>
+        <div class="cmp" id="p-cmp"></div>
+      </div>
+      <div class="fine" id="p-fine"></div>
+    </div>
+  </div>
+
+  <footer>
+    Built by <a href="https://github.com/hakowxy">Xinyang Ma</a> with Python, statsmodels and Plotly.
+    Data: Landeshauptstadt München, Raddauerzählstellen (open data), 2025.
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const n0 = (x) => Math.round(x).toLocaleString("en");
+const short = (x) => x >= 1e6 ? (x / 1e6).toFixed(2) + "M" : x >= 1e4 ? (x / 1e3).toFixed(0) + "k" : n0(x);
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MODELED = ["Erhardt", "Olympia", "Hirsch", "Arnulf"];
+const ALL = "All four";
+let D, rows, state = { station: ALL, month: "June" };
+
+fetch("data.json").then((r) => r.json()).then((data) => {
+  D = data;
+  rows = D.daily.date.map((d, i) => ({
+    date: d, station: D.daily.station[i], total: D.daily.total[i],
+    temp: D.daily.temp_max[i], rain: D.daily.rain_mm[i], sun: D.daily.sun_hours[i],
+  }));
+  const chips = $("chips");
+  [ALL, ...D.stations].forEach((s) => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.innerHTML = s === ALL ? `All four <small>full-year stations</small>` : s === "Kreuther" ? `Kreuther <small>Oct-Dec only</small>` : s;
+    b.dataset.s = s;
+    b.onclick = () => { state.station = s; if (MODELED.includes(s)) $("p-station").value = s; render(); };
+    chips.appendChild(b);
+  });
+  [...$("month-toggle").children].forEach((b) => b.onclick = () => { state.month = b.dataset.m; renderHourly(); });
+
+  $("p-station").innerHTML = [`<option value="${ALL}">All four combined</option>`, ...MODELED.map((s) => `<option>${s}</option>`)].join("");
+  $("p-day").innerHTML = DAYS.map((d) => `<option>${d}</option>`).join("");
+  $("p-day").value = "Wed";
+  ["p-station", "p-day", "p-holiday", "p-school", "p-temp", "p-rain", "p-sun"].forEach((id) => $(id).addEventListener("input", predict));
+  checkModel();
+  render();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+});
+
+function selectedRows() {
+  if (state.station !== ALL) return rows.filter((r) => r.station === state.station);
+  const byDate = new Map();
+  rows.filter((r) => MODELED.includes(r.station)).forEach((r) => {
+    const g = byDate.get(r.date) || { ...r, total: 0, station: ALL };
+    g.total += r.total; byDate.set(r.date, g);
+  });
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+const dow = (iso) => (new Date(iso + "T12:00:00").getDay() + 6) % 7;
+const fmtDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+
+function render() {
+  [...$("chips").children].forEach((b) => b.classList.toggle("on", b.dataset.s === state.station));
+  const R = selectedRows();
+  const total = R.reduce((a, r) => a + r.total, 0);
+  const best = R.reduce((a, r) => (r.total > a.total ? r : a), R[0]);
+  const weekdays = R.filter((r) => dow(r.date) < 5).map((r) => r.total).sort((a, b) => a - b);
+  const median = weekdays[Math.floor(weekdays.length / 2)];
+  const wkd = R.filter((r) => dow(r.date) < 5);
+  const avg = (a) => a.reduce((s, r) => s + r.total, 0) / a.length;
+  const wet = wkd.filter((r) => r.rain >= 5), dry = wkd.filter((r) => r.rain === 0);
+  $("k-total").textContent = short(total);
+  $("n-total").textContent = `${R.length} days counted`;
+  $("k-best").textContent = n0(best.total);
+  $("n-best").textContent = `${fmtDate(best.date)} · ${best.temp}°C, ${best.rain} mm rain`;
+  $("k-weekday").textContent = n0(median);
+  $("n-weekday").textContent = "Median weekday";
+  const drop = wet.length && dry.length ? avg(wet) / avg(dry) - 1 : null;
+  $("k-rain").textContent = drop === null ? "–" : `${drop > 0 ? "+" : ""}${(drop * 100).toFixed(0)}%`;
+  $("k-rain").style.color = drop !== null && drop < 0 ? css("--red") : "";
+  renderCalendar(R);
+  renderHourly();
+  predict();
+}
+
+function renderCalendar(R) {
+  const jan1 = new Date("2025-01-01T12:00:00");
+  const offset = dow("2025-01-01");
+  const weeks = 53;
+  const z = DAYS.map(() => Array(weeks).fill(null));
+  const text = DAYS.map(() => Array(weeks).fill(""));
+  R.forEach((r) => {
+    const idx = Math.round((new Date(r.date + "T12:00:00") - jan1) / 864e5) + offset;
+    const w = Math.floor(idx / 7), d = idx % 7;
+    z[d][w] = r.total;
+    text[d][w] = `${fmtDate(r.date)}<br><b>${n0(r.total)}</b> cyclists<br>${r.temp}°C max · ${r.rain} mm rain · ${r.sun} h sun`;
+  });
+  const vals = R.map((r) => r.total).sort((a, b) => a - b);
+  const q = (p) => vals[Math.min(vals.length - 1, Math.floor(p * vals.length))];
+  const zmax = q(0.98);
+  const scale = [[0, css("--c0")], [0.25, css("--c1")], [0.5, css("--c2")], [0.75, css("--c3")], [1, css("--c4")]];
+  const monthTicks = [], monthLabels = [];
+  for (let m = 0; m < 12; m++) {
+    const d = new Date(2025, m, 1, 12);
+    monthTicks.push(Math.floor((Math.round((d - jan1) / 864e5) + offset) / 7));
+    monthLabels.push(d.toLocaleDateString("en-GB", { month: "short" }));
+  }
+  Plotly.react("calendar", [{
+    type: "heatmap", z, text, hovertemplate: "%{text}<extra></extra>", colorscale: scale, zmin: 0, zmax,
+    showscale: false, xgap: 3, ygap: 3, hoverongaps: false,
+  }], {
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { color: css("--muted"), size: 11 },
+    margin: { l: 34, r: 4, t: 20, b: 4 },
+    xaxis: { tickvals: monthTicks, ticktext: monthLabels, side: "top", showgrid: false, zeroline: false, fixedrange: true },
+    yaxis: { tickvals: [0, 2, 4, 6], ticktext: ["Mon", "Wed", "Fri", "Sun"], autorange: "reversed", showgrid: false, zeroline: false, fixedrange: true },
+  }, { displayModeBar: false, responsive: true });
+}
+
+function renderHourly() {
+  [...$("month-toggle").children].forEach((b) => b.classList.toggle("on", b.dataset.m === state.month));
+  const stations = state.station === ALL ? MODELED : [state.station];
+  const series = (type) => {
+    const out = Array(24).fill(0); let found = false;
+    stations.forEach((s) => {
+      const p = D.profiles[s] && D.profiles[s][state.month] && D.profiles[s][state.month][type];
+      if (p) { found = true; p.forEach((v, h) => out[h] += v); }
+    });
+    return found ? out : null;
+  };
+  const wk = series("weekday"), we = series("weekend");
+  const hours = [...Array(24).keys()];
+  const traces = [];
+  if (wk) traces.push({ x: hours, y: wk, name: "Weekday", type: "scatter", mode: "lines", line: { color: css("--accent"), width: 2.5, shape: "spline" },
+    hovertemplate: "%{x}:00 · %{y:,.0f} per hour<extra>Weekday</extra>" });
+  if (we) traces.push({ x: hours, y: we, name: "Weekend", type: "scatter", mode: "lines", line: { color: css("--muted"), width: 2, dash: "dot", shape: "spline" },
+    hovertemplate: "%{x}:00 · %{y:,.0f} per hour<extra>Weekend</extra>" });
+  Plotly.react("hourly", traces, {
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { color: css("--text"), size: 12 },
+    margin: { l: 44, r: 10, t: 10, b: 36 }, showlegend: true, legend: { orientation: "h", x: 0, y: 1.08 },
+    xaxis: { tickvals: [0, 3, 6, 9, 12, 15, 18, 21], ticksuffix: ":00", gridcolor: css("--grid"), zeroline: false, fixedrange: true },
+    yaxis: { gridcolor: css("--grid"), zeroline: false, rangemode: "tozero", fixedrange: true },
+    annotations: traces.length ? [] : [{ text: "No 15-minute data for this station in " + state.month, showarrow: false, x: 0.5, y: 0.5, xref: "paper", yref: "paper", font: { color: css("--muted") } }],
+  }, { displayModeBar: false, responsive: true });
+}
+
+// Rebuilds the regression's linear predictor from its coefficient names.
+function logPredict(o) {
+  const p = D.model.params, g = (k) => p[k] || 0;
+  const off = o.weekday === "Sat" || o.weekday === "Sun" || o.holiday;
+  let y = g("Intercept") + g(`C(station)[T.${o.station}]`) + g(`C(weekday)[T.${o.weekday}]`);
+  if (off) y += g("off_day[T.True]") + g(`C(station)[T.${o.station}]:off_day[T.True]`);
+  if (o.holiday) y += g("holiday[T.True]");
+  if (o.school_holiday) y += g("school_holiday[T.True]");
+  if (o.christmas) y += g("christmas[T.True]");
+  y += g("temp_max") * o.temp_max + g("I(temp_max ** 2)") * o.temp_max ** 2;
+  y += g("np.log1p(rain_mm)") * Math.log1p(o.rain_mm) + g("sun_hours") * o.sun_hours;
+  return y;
+}
+const predictStation = (o) => Math.exp(logPredict(o));
+
+function checkModel() {
+  const worst = Math.max(...D.model.reference.map((r) => Math.abs(predictStation(r) / r.expected - 1)));
+  if (worst > 1e-3) console.error("Dashboard model differs from statsmodels by", worst);
+}
+
+function predict() {
+  const base = {
+    weekday: $("p-day").value, holiday: $("p-holiday").checked, school_holiday: $("p-school").checked, christmas: false,
+    temp_max: +$("p-temp").value, rain_mm: +$("p-rain").value, sun_hours: +$("p-sun").value,
+  };
+  $("v-temp").textContent = `${base.temp_max}°C`;
+  $("v-rain").textContent = base.rain_mm === 0 ? "none" : `${base.rain_mm} mm`;
+  $("v-sun").textContent = `${base.sun_hours} h`;
+  const sel = $("p-station").value;
+  const stations = sel === ALL ? MODELED : [sel];
+  const total = (o) => stations.reduce((a, s) => a + predictStation({ ...o, station: s }), 0);
+  const value = total(base);
+  const ideal = total({ ...base, temp_max: 24, rain_mm: 0, sun_hours: 12 });
+  const diff = value / ideal - 1;
+  $("p-out").textContent = `≈ ${n0(value)} cyclists`;
+  $("p-cmp").textContent = Math.abs(diff) < 0.005 ? "Same as a dry, sunny 24°C day"
+    : `${diff > 0 ? "+" : ""}${(diff * 100).toFixed(0)}% vs a dry, sunny 24°C ${base.weekday}`;
+  $("p-fine").textContent = `Regression on 2025 data (R² ${D.model.r2}). Out-of-sample forecasts were off by about 16% on a typical day, so treat this as a ballpark.`;
+}
+</script>
+</body>
+</html>

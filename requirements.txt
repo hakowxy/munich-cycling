@@ -1,0 +1,9 @@
+holidays>=0.50
+jupyter
+matplotlib>=3.8
+nbconvert
+nbformat
+numpy>=1.26
+pandas>=2.2
+statsmodels>=0.14
+xgboost>=2.0
