@@ -2,9 +2,9 @@
 
 How weather, holidays and events drive cycling in Munich, using every count from the city's automatic bike counters in 2025.
 
-**[Open the interactive dashboard](https://xinyangma18.github.io/munich-cycling/)** · **[Read the full analysis](notebooks/analysis.ipynb)**
+**[Open the interactive dashboard](https://hakowxy.github.io/munich-cycling/)** · **[Read the full analysis](notebooks/analysis.ipynb)**
 
-[![Dashboard preview](images/00_dashboard.png)](https://xinyangma18.github.io/munich-cycling/)
+[![Dashboard preview](images/00_dashboard.png)](https://hakowxy.github.io/munich-cycling/)
 
 The dashboard has a calendar of every day of 2025, hourly profiles per route, and a **weather predictor**: set the temperature, rain and day of the week, and it estimates how many cyclists a route will see.
 
@@ -78,4 +78,4 @@ Landeshauptstadt München, *Raddauerzählstellen* ([opendata.muenchen.de](https:
 
 ---
 
-Made by [Xinyang Ma](https://github.com/xinyangma18) · [LinkedIn](https://www.linkedin.com/in/xinyang-m-122844288/)
+Made by [Xinyang Ma](https://github.com/hakowxy) · [LinkedIn](https://www.linkedin.com/in/xinyang-m-122844288/)
